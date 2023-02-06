@@ -1,39 +1,48 @@
 <template>
   <div class="wrapper">
-    <h2 class="card__city">{{ getCity }}</h2>
-    <div class="card__row card__row--temperature">
+    <settings v-if="isSettingsOn" />
+    <div class="card" v-if="!isSettingsOn">
       <img
-        class="card__img"
-        src="../assets/images/sunny.png"
-        alt=""
-        srcset=""
+        class="card__settings"
+        :src="require('../assets/images/gear.png')"
+        @click="isSettingsOn = !isSettingsOn"
+        alt="gear"
       />
-      <div class="card__temperature">{{ getTemperature }}&#176;C</div>
-    </div>
-    <div class="card__row">
-      Feels like {{ getFeelsLike }}&#176;C. {{ getWeatherDescription }}.
-    </div>
-    <div class="card__row">
-      <div class="card__col card__col--wind">
-        <!-- <img class="card__arrow" src="../assets/images/arrow.png" alt="arrow"> -->
-        {{ getWindSpeed }} {{ getWindDegree }}
+
+      <h2 class="card__city">{{ getCity }}</h2>
+      <div class="card__row card__row--temperature">
+        <img class="card__img" :src="getImage" alt="weather img" srcset="" />
+        <div class="card__temperature">{{ getTemperature }}&#176;C</div>
       </div>
-      <div class="card__col card__col--pressure">
-        <!-- <img class="card__pressure" src="../assets/images/pressure.png" alt="pressure"> -->
-        {{ getPressure }}
+      <div class="card__row">
+        Feels like {{ getFeelsLike }}&#176;C. {{ getWeatherDescription }}.
+      </div>
+      <div class="card__row">
+        <div class="card__col card__col--wind">
+          {{ getWindSpeed }} {{ getWindDegree }}
+        </div>
+        <div class="card__col card__col--pressure">
+          {{ getPressure }}
+        </div>
+      </div>
+      <div class="card__row">
+        <div class="card__col card__col--first">{{ getHumidity }}</div>
+        <div class="card__col">{{ getVisibility }}</div>
       </div>
     </div>
-    <div class="card__row">
-      <div class="card__col"></div>
-      <div class="card__col"></div>
-    </div>
-    <div class="card__row"></div>
   </div>
 </template>
 
 <script>
+import Settings from "../components/Settings.vue";
+
 export default {
   name: "Card",
+
+  components: {
+    Settings,
+  },
+
   data() {
     return {
       city: "",
@@ -44,6 +53,10 @@ export default {
       windSpeed: 0,
       windDegree: 0,
       pressure: 0,
+      humidity: 0,
+      visibility: 0,
+      weatherMain: "",
+      isSettingsOn: false,
     };
   },
 
@@ -54,7 +67,7 @@ export default {
   methods: {
     getData() {
       fetch(
-        "https://api.openweathermap.org/data/2.5/weather?q=Moscow&units=metric&appid=62ce58e25a320fc5b56a8afac29380de"
+        "https://api.openweathermap.org/data/2.5/weather?q=Samara&units=metric&appid=62ce58e25a320fc5b56a8afac29380de"
       )
         .then((response) => response.json())
         .then((data) => {
@@ -67,6 +80,9 @@ export default {
           this.windSpeed = data.wind.speed;
           this.windDegree = data.wind.deg;
           this.pressure = data.main.pressure;
+          this.humidity = data.main.humidity;
+          this.visibility = data.visibility;
+          this.weatherMain = data.weather[0].main;
         });
     },
   },
@@ -111,6 +127,33 @@ export default {
     getPressure() {
       return `${this.pressure}hPa`;
     },
+
+    getHumidity() {
+      return `Humidity: ${this.humidity}%`;
+    },
+
+    getVisibility() {
+      return `Visibility: ${(this.visibility / 1000).toFixed(1)}km`;
+    },
+
+    getImage() {
+      switch (this.weatherMain) {
+        case "Snow":
+          return require("../assets/images/snowy.png");
+        case "Rain":
+          return require("../assets/images/rain.png");
+        case "Clouds":
+          if (this.weatherDescription === "broken clouds") {
+            return require("../assets/images/part-cloudy.png");
+          } else {
+            return require("../assets/images/cloudy.png");
+          }
+        case "Haze":
+          return require("../assets/images/haze.png");
+        default:
+          return require("../assets/images/sunny.png");
+      }
+    },
   },
 };
 </script>
@@ -119,11 +162,21 @@ export default {
 @import "../styles/reset.css";
 
 .wrapper {
-  width: 200px;
+  width: 225px;
   padding: 20px;
+  position: relative;
 }
 
 .card {
+  &__settings {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+  }
+
   &__city {
     font-weight: 700;
     margin-bottom: 30px;
@@ -156,6 +209,10 @@ export default {
     display: flex;
     align-items: center;
     position: relative;
+
+    &--first {
+      margin-right: 10px;
+    }
 
     &::before {
       position: absolute;
