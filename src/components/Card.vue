@@ -1,6 +1,10 @@
 <template>
   <div class="wrapper">
-    <settings v-if="isSettingsOn" />
+    <settings
+      v-if="isSettingsOn"
+      @select-city="getSelectedCity"
+      @settings-off="isSettingsOn = !isSettingsOn"
+    />
     <div class="card" v-if="!isSettingsOn">
       <img
         class="card__settings"
@@ -57,21 +61,22 @@ export default {
       visibility: 0,
       weatherMain: "",
       isSettingsOn: false,
+      selectedCity: "",
     };
   },
 
-  beforeMount() {
+  updated() {
     this.getData();
   },
 
   methods: {
     getData() {
       fetch(
-        "https://api.openweathermap.org/data/2.5/weather?q=Samara&units=metric&appid=62ce58e25a320fc5b56a8afac29380de"
+        `https://api.openweathermap.org/data/2.5/weather?q=${this.selectedCity}&units=metric&appid=62ce58e25a320fc5b56a8afac29380de`
       )
         .then((response) => response.json())
         .then((data) => {
-          console.log(data);
+          // console.log(data);
           this.city = data.name;
           this.country = data.sys.country;
           this.temperature = data.main.temp;
@@ -84,6 +89,10 @@ export default {
           this.visibility = data.visibility;
           this.weatherMain = data.weather[0].main;
         });
+    },
+
+    getSelectedCity(value) {
+      this.selectedCity = value;
     },
   },
 
@@ -162,7 +171,8 @@ export default {
 @import "../styles/reset.css";
 
 .wrapper {
-  width: 225px;
+  width: 260px;
+  height: 340px;
   padding: 20px;
   position: relative;
 }
