@@ -1,11 +1,17 @@
 <template>
   <div class="wrapper">
-    <settings
-      v-if="isSettingsOn"
-      @select-city="getSelectedCity"
-      @settings-off="isSettingsOn = !isSettingsOn"
-    />
-    <div class="card" v-if="!isSettingsOn">
+    <initialization v-if="!hasSavedCities" @select-city="getSelectedCity" />
+    <keep-alive>
+      <settings
+        v-if="isSettingsOn"
+        @select-city="getSelectedCity"
+        @settings-off="isSettingsOn = !isSettingsOn"
+        @remove-city="getSelectedCity"
+        @empty-localstorage="hasSavedCities = false"
+      />
+    </keep-alive>
+
+    <div class="card" v-if="!isSettingsOn && hasSavedCities">
       <img
         class="card__settings"
         :src="require('../assets/images/gear.png')"
@@ -39,12 +45,14 @@
 
 <script>
 import Settings from "../components/Settings.vue";
+import Initialization from "../components/Initialization.vue";
 
 export default {
   name: "Card",
 
   components: {
     Settings,
+    Initialization,
   },
 
   data() {
@@ -62,7 +70,16 @@ export default {
       weatherMain: "",
       isSettingsOn: false,
       selectedCity: "",
+      hasSavedCities: false,
     };
+  },
+
+  mounted() {
+    if (window.localStorage.length) {
+      this.hasSavedCities = true;
+      this.selectedCity = this.getActiveCity || localStorage.key(0);
+      this.getData();
+    }
   },
 
   updated() {
@@ -76,7 +93,6 @@ export default {
       )
         .then((response) => response.json())
         .then((data) => {
-          // console.log(data);
           this.city = data.name;
           this.country = data.sys.country;
           this.temperature = data.main.temp;
@@ -92,7 +108,16 @@ export default {
     },
 
     getSelectedCity(value) {
-      this.selectedCity = value;
+      this.hasSavedCities = true;
+      if (value) {
+        this.selectedCity = value;
+      } else {
+        this.selectedCity = localStorage.key(0);
+      }
+    },
+
+    removeCity() {
+      console.log("remove");
     },
   },
 
@@ -143,6 +168,19 @@ export default {
 
     getVisibility() {
       return `Visibility: ${(this.visibility / 1000).toFixed(1)}km`;
+    },
+
+    getActiveCity() {
+      for (let key in localStorage) {
+        // if (!localStorage.hasOwnProperty(key)) {
+        //   continue
+        // }
+        const cityStorage = JSON.parse(localStorage[key]);
+        if (cityStorage.isActive) {
+          return cityStorage.city;
+        }
+      }
+      return "";
     },
 
     getImage() {

@@ -1,12 +1,12 @@
 <template>
   <div class="settings">
-    <div class="settings__close" @click="$emit('settings-off')">
+    <div class="settings__close" @click="handleClose">
       <div class="settings__close--first"></div>
       <div class="settings__close--second"></div>
     </div>
     <h2 class="settings__title">Settings</h2>
 
-    <ul class="settings__cities">
+    <!-- <ul class="settings__cities">
       <li
         class="settings__city"
         v-for="(city, index) in cities"
@@ -25,9 +25,39 @@
           class="settings__icon settings__icon--trash"
           src="../assets/images/trash.png"
           alt="trash"
+          @click.stop="removeCity"
         />
       </li>
-    </ul>
+    </ul> -->
+
+    <draggable
+      v-model="cities"
+      class="settings__cities"
+      @start="drag = true"
+      @end="drag = false"
+    >
+      <li
+        class="settings__city"
+        v-for="(city, index) in cities"
+        :key="index"
+        @click.stop="handleChoice"
+      >
+        <div>
+          <img
+            class="settings__icon settings__icon--drag"
+            src="../assets/images/drag.png"
+            alt="drag"
+          />
+          <span>{{ city.city }}</span>
+        </div>
+        <img
+          class="settings__icon settings__icon--trash"
+          src="../assets/images/trash.png"
+          alt="trash"
+          @click.stop="removeCity"
+        />
+      </li>
+    </draggable>
 
     <div class="settings__row">
       <div class="settings__placeholder" v-if="cities.length === 0">
@@ -53,70 +83,142 @@
 </template>
 
 <script>
+import mainMixin from "../mixins/index";
+import draggable from "vuedraggable";
+
 export default {
   data() {
     return {
       cities: [],
-      currentCity: "",
-      wrongValue: false,
-      selectedCity: "",
+      isSettings: true,
     };
   },
 
+  components: {
+    draggable,
+  },
+
+  mixins: [mainMixin],
+
+  mounted() {
+    for (let key in localStorage) {
+      // if (!localStorage.hasOwnProperty(key)) {
+      //   continue
+      // }
+      const cityStorage = JSON.parse(localStorage[key]);
+      this.cities.push({
+        city: cityStorage.city,
+        isActive: cityStorage.isActive,
+      });
+
+      this.checkCitiesLength(), this.updateActiveStyle(this.activeCity);
+    }
+  },
+
+  updated() {
+    this.checkCitiesLength();
+    this.updateLocalStorage();
+    this.updateActiveStyle(this.getActiveCity);
+  },
+
   methods: {
-    addCity() {
-      if (this.selectedCity && this.cities.length < 4) {
-        this.cities.push(this.selectedCity);
+    addCity(value) {
+      if (this.cities.length < 4) {
+        console.log("addcity");
+        this.cities.push(value);
         this.selectedCity = "";
         this.currentCity = "";
       }
     },
 
-    async inputHandler() {
-      try {
-        const response = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?q=${this.currentCity}&units=metric&appid=62ce58e25a320fc5b56a8afac29380de`
-        );
-        if (!response.ok) {
-          throw new Error();
-        }
-        const data = await response.json();
-        console.log(data);
-        this.selectedCity = `${data.name}, ${data.sys.country}`;
-        this.addCity();
-      } catch (error) {
-        this.showWarning();
-      }
-    },
-
-    showWarning() {
-      this.wrongValue = true;
-      setTimeout(() => {
-        this.wrongValue = false;
-      }, 1000);
-    },
-
     handleChoice() {
       this.setActive();
-      console.log("qq");
-      this.$emit("select-city", this.getCityValue);
+      this.$emit("select-city", this.getCityValue());
     },
 
     setActive() {
+      this.cities.forEach((el) => {
+        el.isActive = false;
+      });
+      const activeCity = event.target
+        .closest("li")
+        .querySelector("span").innerHTML;
+      const activeIndex = this.cities.findIndex((el) => el.city === activeCity);
+      this.cities[activeIndex].isActive = true;
+
+      this.updateActiveStyle(activeCity);
+      // event.target.closest("li").classList.add("settings__city--active")
+    },
+
+    updateActiveStyle(cityName) {
       let items = document.querySelectorAll(".settings__city");
       for (let item of items) {
         if (item.classList.contains("settings__city--active")) {
           item.classList.remove("settings__city--active");
         }
+        if (item.querySelector("span").innerHTML === cityName) {
+          item.classList.add("settings__city--active");
+        }
       }
-      event.target.closest("li").classList.add("settings__city--active");
+    },
+
+    getCityValue() {
+      let node = document.querySelector(".settings__city--active");
+      return node.querySelector("span").innerHTML;
+    },
+
+    checkCitiesLength() {
+      if (this.cities.length === 4) {
+        const input = document.querySelector(".settings__input");
+        input.setAttribute("disabled", true);
+      }
+    },
+
+    removeCity(event) {
+      const item = event.target.closest("li");
+      const cityName = item.querySelector("span").innerHTML;
+      console.log(cityName);
+
+      for (let key in localStorage) {
+        // if (!localStorage.hasOwnProperty(key)) {
+        //   continue;
+        // }
+        if (cityName === localStorage.getItem(key)) {
+          localStorage.removeItem(key);
+        }
+      }
+
+      console.log(window.localStorage.length);
+      if (window.localStorage.length === 0) {
+        this.$emit("empty-localstorage");
+      }
+
+      this.cities.splice(this.cities.indexOf(cityName), 1);
+
+      this.$emit("remove-city");
+
+      this.updateLocalStorage();
+    },
+
+    updateLocalStorage() {
+      localStorage.clear();
+
+      for (let i = 0; i < this.cities.length; i++) {
+        localStorage[i] = JSON.stringify(this.cities[i]);
+      }
+    },
+
+    handleClose() {
+      if (this.cities.length && this.cities.find((el) => el.isActive)) {
+        this.$emit("settings-off");
+      }
     },
   },
 
   computed: {
-    getCityValue() {
-      let node = document.querySelector(".settings__city--active");
-      return node.querySelector("span").innerHTML;
+    getActiveCity() {
+      const activeCity = this.cities.find((el) => el.isActive);
+      return activeCity.city;
     },
   },
 };
@@ -198,7 +300,8 @@ export default {
     cursor: default;
 
     &--active {
-      background: #7b8ffd;
+      // background: #7b8ffd;
+      border: 2px solid #7b8ffd;
     }
 
     & div {
