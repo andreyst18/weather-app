@@ -6,30 +6,6 @@
     </div>
     <h2 class="settings__title">Settings</h2>
 
-    <!-- <ul class="settings__cities">
-      <li
-        class="settings__city"
-        v-for="(city, index) in cities"
-        :key="index"
-        @click.stop="handleChoice"
-      >
-        <div>
-          <img
-            class="settings__icon settings__icon--drag"
-            src="../assets/images/drag.png"
-            alt="drag"
-          />
-          <span>{{ city }}</span>
-        </div>
-        <img
-          class="settings__icon settings__icon--trash"
-          src="../assets/images/trash.png"
-          alt="trash"
-          @click.stop="removeCity"
-        />
-      </li>
-    </ul> -->
-
     <draggable
       v-model="cities"
       class="settings__cities"
@@ -101,30 +77,21 @@ export default {
   mixins: [mainMixin],
 
   mounted() {
-    for (let key in localStorage) {
-      // if (!localStorage.hasOwnProperty(key)) {
-      //   continue
-      // }
-      const cityStorage = JSON.parse(localStorage[key]);
-      this.cities.push({
-        city: cityStorage.city,
-        isActive: cityStorage.isActive,
-      });
-
-      this.checkCitiesLength(), this.updateActiveStyle(this.activeCity);
-    }
+    this.getLocalStorage();
+    this.checkCitiesLength(), this.updateActiveStyle(this.activeCity);
   },
 
   updated() {
     this.checkCitiesLength();
     this.updateLocalStorage();
-    this.updateActiveStyle(this.getActiveCity);
+    if (this.cities.length > 0) {
+      this.updateActiveStyle(this.getActiveCity);
+    }
   },
 
   methods: {
     addCity(value) {
       if (this.cities.length < 4) {
-        console.log("addcity");
         this.cities.push(value);
         this.selectedCity = "";
         this.currentCity = "";
@@ -147,7 +114,8 @@ export default {
       this.cities[activeIndex].isActive = true;
 
       this.updateActiveStyle(activeCity);
-      // event.target.closest("li").classList.add("settings__city--active")
+
+      this.updateLocalStorage();
     },
 
     updateActiveStyle(cityName) {
@@ -177,25 +145,24 @@ export default {
     removeCity(event) {
       const item = event.target.closest("li");
       const cityName = item.querySelector("span").innerHTML;
-      console.log(cityName);
+      let index;
 
-      for (let key in localStorage) {
-        // if (!localStorage.hasOwnProperty(key)) {
-        //   continue;
-        // }
-        if (cityName === localStorage.getItem(key)) {
-          localStorage.removeItem(key);
+      this.getLocalStorage();
+
+      for (let i = 0; i < this.cities.length; i++) {
+        if (this.cities[i].city === cityName) {
+          index = i;
         }
       }
-
-      console.log(window.localStorage.length);
-      if (window.localStorage.length === 0) {
-        this.$emit("empty-localstorage");
+      if (this.cities[index].isActive) {
+        this.cities.splice(index, 1);
+        if (this.cities.length > 0) {
+          this.cities[0].isActive = true;
+          this.$emit("remove-city", this.cities[0].city);
+        }
+      } else {
+        this.cities.splice(index, 1);
       }
-
-      this.cities.splice(this.cities.indexOf(cityName), 1);
-
-      this.$emit("remove-city");
 
       this.updateLocalStorage();
     },
@@ -211,6 +178,18 @@ export default {
     handleClose() {
       if (this.cities.length && this.cities.find((el) => el.isActive)) {
         this.$emit("settings-off");
+      }
+    },
+
+    getLocalStorage() {
+      this.cities.splice(0);
+      for (let i = 0; i < localStorage.length; i++) {
+        let key = localStorage.key(i);
+        const cityStorage = JSON.parse(localStorage[key]);
+        this.cities.push({
+          city: cityStorage.city,
+          isActive: cityStorage.isActive,
+        });
       }
     },
   },

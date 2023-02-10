@@ -23,7 +23,7 @@ export default {
           const selectedCity = this.selectedCity;
           localStorage[this.currentCity] = JSON.stringify({
             city: selectedCity,
-            isActive: false,
+            isActive: window.localStorage.length === 0,
           });
         }
 

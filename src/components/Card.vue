@@ -6,7 +6,7 @@
         v-if="isSettingsOn"
         @select-city="getSelectedCity"
         @settings-off="isSettingsOn = !isSettingsOn"
-        @remove-city="getSelectedCity"
+        @remove-city="getCityByRemove"
         @empty-localstorage="hasSavedCities = false"
       />
     </keep-alive>
@@ -77,7 +77,7 @@ export default {
   mounted() {
     if (window.localStorage.length) {
       this.hasSavedCities = true;
-      this.selectedCity = this.getActiveCity || localStorage.key(0);
+      this.selectedCity = this.getActiveCity;
       this.getData();
     }
   },
@@ -109,15 +109,12 @@ export default {
 
     getSelectedCity(value) {
       this.hasSavedCities = true;
-      if (value) {
-        this.selectedCity = value;
-      } else {
-        this.selectedCity = localStorage.key(0);
-      }
+      this.selectedCity = value;
     },
 
-    removeCity() {
-      console.log("remove");
+    getCityByRemove(value) {
+      this.selectedCity = value;
+      this.getData();
     },
   },
 
@@ -171,10 +168,8 @@ export default {
     },
 
     getActiveCity() {
-      for (let key in localStorage) {
-        // if (!localStorage.hasOwnProperty(key)) {
-        //   continue
-        // }
+      for (let i = 0; i < localStorage.length; i++) {
+        let key = localStorage.key(i);
         const cityStorage = JSON.parse(localStorage[key]);
         if (cityStorage.isActive) {
           return cityStorage.city;
